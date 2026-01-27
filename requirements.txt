@@ -1,0 +1,3 @@
+scipy
+pyserial
+opencv-python
