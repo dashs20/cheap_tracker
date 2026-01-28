@@ -7,8 +7,8 @@ CAM_B_ID = 1
 
 # Camera Intrinsics
 FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-HORI_FOV = 60 # Degrees
+FRAME_HEIGHT = 360
+HORI_FOV = 55 # Degrees
 RES_PX = np.array([FRAME_WIDTH, FRAME_HEIGHT])
 
 # Tuning for the "Snap" feature

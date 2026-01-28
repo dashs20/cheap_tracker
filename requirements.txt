@@ -1,3 +1,4 @@
 scipy
 pyserial
 opencv-python
+matplotlib
