@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from cam_math import *
+from multi_track import multi_track
 from cam_class import camera
 import sys
 
@@ -75,32 +75,11 @@ while True:
 
     # --- MATH ---
     if len(px1) > 0 and len(px2) > 0:
-        # Offset pixels
-        px1_off = offset_pixels(res, px1)
-        px2_off = offset_pixels(res, px2)
-
-        u1 = px2cam_unit(cam1, px1_off)
-        u2 = px2cam_unit(cam2, px2_off)
-
-        # Correlate
-        pt2_pt1_partner_indices = correlate(cam1, cam2, u1, u2)
-        
-        # Match & Triangulate
-        matched_u1 = u1[:, pt2_pt1_partner_indices]
-        n_pairs = u2.shape[1]
-        pts_g = np.zeros((3, n_pairs))
-        
-        # Loop through ALL found pairs
-        for i_pair in range(n_pairs):
-            v1_vec = matched_u1[:, i_pair]
-            v2_vec = u2[:, i_pair]
-            
-            # Pass the specific vectors for this pair
-            point_3d, error = locate(v1_vec, v2_vec, cam1, cam2)
-            pts_g[:, i_pair] = point_3d.flatten()
+        pts_g = multi_track(px1,px2,cam1,cam2)
 
         # Print up to 2 points
         msg = ""
+        n_pairs = pts_g.shape[1]
         count_to_print = min(n_pairs, 2)
         for i in range(count_to_print):
             # Print X, Y, Z rounded to 3 decimals
