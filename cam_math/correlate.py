@@ -1,6 +1,6 @@
 import numpy as np
 from .cam2px import cam2px
-from cam_class import camera
+from .cam_class import camera
 
 def correlate(cam1: camera, cam2: camera, pts1_cam1, pts2_cam2):
     """

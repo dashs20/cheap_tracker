@@ -1,5 +1,5 @@
 import numpy as np
-from cam_class import camera
+from .cam_class import camera
 
 def cam2px(cam: camera, pts):
     """

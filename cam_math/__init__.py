@@ -3,3 +3,5 @@ from .cam2px import cam2px
 from .offset_pixels import offset_pixels
 from .correlate import correlate
 from .locate import locate
+from .cam_class import camera
+from .multi_track import multi_track

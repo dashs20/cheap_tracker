@@ -1,5 +1,5 @@
 import numpy as np
-from cam_class import camera
+from .cam_class import camera
 
 def px2cam_unit(cam: camera, px):
     """

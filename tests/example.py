@@ -1,7 +1,14 @@
+import sys
+import os
+
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
 import cv2
 import numpy as np
-from multi_track import multi_track
-from cam_class import camera
+from cam_math import multi_track
+from cam_math import camera
 import sys
 
 # --- 1. SETUP MATH OBJECTS ---

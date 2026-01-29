@@ -1,3 +1,10 @@
+import sys
+import os
+
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -6,7 +13,7 @@ from plotting_tools import *
 
 # Import your custom modules
 from cam_math import *
-from cam_class import camera
+from cam_math.cam_class import camera
 
 # --- 1. SETUP SCENE ---
 res = np.array([640, 360])

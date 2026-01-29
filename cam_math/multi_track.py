@@ -1,6 +1,9 @@
 import numpy as np
-from cam_math import *
-from cam_class import camera
+from .offset_pixels import offset_pixels
+from .px2cam_unit import px2cam_unit
+from .correlate import correlate
+from .locate import locate
+from .cam_class import camera
 from numpy.typing import NDArray
 
 "This function takes in lit pixels from OpenCV, and spits out 3D points!"

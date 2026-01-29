@@ -1,5 +1,5 @@
 import numpy as np
-from cam_class import camera
+from .cam_class import camera
 
 def locate(v1, v2, cam1: camera, cam2: camera):
     vc1_g = cam1.c_cam2g @ v1
