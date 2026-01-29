@@ -31,4 +31,4 @@ If you do all this right, it'll spit out the correct position and orientation (i
 
 Take those camera parameters, and paste them in the relevant spots in example.py (under the CAM portion near the top). Make sure the FOV, aspect ratio, and resolution match your localizer script! Now, hit run, and a GUI will pop up showing the points the cameras see. Also, the terminal will spit out the coordinates of up to 2 points (limited to 2 for verbosity - it can mathematically handle AS MANY AS YOU WANT)!
 
-IF YOU HAVE ANY QUESTIONS, go ahead and submit a github issue. I will try to address as many as I can!
+IF YOU HAVE ANY QUESTIONS, DM ME on instagram (https://www.instagram.com/quantum_projects_yt?igsh=b2JpcWs5ZWpoZXln) If you have code issues, go ahead and submit a github issue. I will try to address as many as I can!
