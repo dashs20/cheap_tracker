@@ -1,6 +1,7 @@
 import numpy as np
+from cam_class import camera
 
-def cam2px(fovh_deg, res, pts, AR):
+def cam2px(cam: camera, pts):
     """
     Transform from camera frame (3D) to Screen-Centered Pixels (2D).
     Origin (0,0) is the center of the image.
@@ -15,12 +16,12 @@ def cam2px(fovh_deg, res, pts, AR):
 
     # 1) Calculate Focal Lengths (sx, sy) in Pixels
     # sx = focal length (horizontal)
-    sx = res[0] / (2 * np.tan(np.deg2rad(fovh_deg) / 2))
+    sx = cam.res[0] / (2 * np.tan(np.deg2rad(cam.fovh_deg) / 2))
     
     # sy = focal length (vertical)
     # Note: If pixels are square, sy should equal sx. 
     # If using AR to force a specific aspect, we use the formula below:
-    sy = res[1] / (2 * np.tan(np.deg2rad(fovh_deg) / 2) * AR)
+    sy = cam.res[1] / (2 * np.tan(np.deg2rad(cam.fovh_deg) / 2) * cam.AR)
 
     # 2) Project: Divide by Z and scale by focal length
     # Note: We do NOT add res/2 here. (0,0) stays at center.

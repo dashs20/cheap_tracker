@@ -1,101 +1,141 @@
-from plotting_tools import *
-from cam_math import *
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from mpl_toolkits.mplot3d import Axes3D
+from plotting_tools import *
 
-# --- CAMERA A ---
-r_o2cam1_g = np.array([ 1.9462,-0.9882, 3.0655])
-c_cam12g   = np.array([[-0.0658,-0.7498,-0.6584],
-                        [-0.9978, 0.0555, 0.0365],
-                        [ 0.0091, 0.6594,-0.7517]])
+# Import your custom modules
+from cam_math import *
+from cam_class import camera
 
-# --- CAMERA B ---
-r_o2cam2_g = np.array([ 0.2248,-2.3525, 2.4353])
-c_cam22g   = np.array([[-0.9954, 0.0935, 0.022 ],
-                        [ 0.0818, 0.7057, 0.7037],
-                        [ 0.0503, 0.7023,-0.7101]])
+# --- 1. SETUP SCENE ---
+res = np.array([640, 360])
+fovh_deg = 110
+AR = 9/16
 
-# Define point to be tracked
-pt_g = np.array([0,0,0])
+# The "God View" Point (Ground Truth)
+# We will see if your math can find this exact point.
+TRUE_PT_G = np.array([1.5, -1.0, 1.0]) 
 
-# get camera 1 origin in camera 2 frame. Also get pt_g in camrea 2 frame
-r_cam22cam1_g = r_o2cam2_g - r_o2cam1_g
-r_cam22cam1_cam2 = np.transpose(c_cam22g) @ r_cam22cam1_g
+# CAM 1
+cam1 = camera(np.array([ 0.5661,-2.3785, 2.5925]),
+              np.array([[-0.9917, 0.1237, 0.0359],
+                        [ 0.1147, 0.7216, 0.6827],
+                        [ 0.0585, 0.6812,-0.7298]]),
+              fovh_deg, res, AR)
 
-r_cam22pt_g = r_o2cam2_g - pt_g
-r_cam22pt_cam2 = np.transpose(c_cam22g) @ r_cam22pt_g
+# CAM 2
+cam2 = camera(np.array([ 2.1788,-1.201 , 2.9993]),
+              np.array([[-0.1162,-0.7595,-0.64  ],
+                        [-0.9925, 0.065 , 0.1031],
+                        [-0.0367, 0.6472,-0.7614]]),
+              fovh_deg, res, AR)
 
-# get both points in cam 2's pixel frame (assume 640x360)
-r_cam22cam1_px = cam2px(110,np.array([640,360]),r_cam22cam1_cam2,9/16)
-r_cam22pt_px = cam2px(110,np.array([640,360]),r_cam22pt_cam2,9/16)
+# --- 2. GENERATE FAKE SENSOR DATA ---
+def project_point_to_cam(cam, pt_g):
+    vec_g = pt_g - cam.r_o2cam_g
+    pt_c = cam.c_cam2g.T @ vec_g 
+    
+    # cam2px returns CENTERED coordinates (0,0 is middle)
+    centered_px = cam2px(cam, pt_c.reshape(3,1))
+    
+    # FIX: Shift to Top-Left Origin (0,0 is top-left)
+    # This mimics what the hardware actually gives us
+    top_left_px = centered_px + (cam.res.reshape(2,1) / 2.0)
+    
+    return top_left_px
 
-# --- PLOTTING ---
-fig = plt.figure(figsize=(16, 8))
+# Generate the "perfect" pixels the cameras would see
+px1_raw = project_point_to_cam(cam1, TRUE_PT_G) # Shape (2,1)
+px2_raw = project_point_to_cam(cam2, TRUE_PT_G) # Shape (2,1)
 
-# === 1. 3D Plot (Left) ===
-ax = fig.add_subplot(121, projection='3d')
+# Transpose to match OpenCV format (N, 2) just to be authentic to your pipeline inputs
+px1_sim = px1_raw.T 
+px2_sim = px2_raw.T 
+
+print(f"--- SIMULATION ---")
+print(f"True Point: {TRUE_PT_G}")
+print(f"Cam 1 sees pixel: {np.round(px1_sim.flatten(), 1)}")
+print(f"Cam 2 sees pixel: {np.round(px2_sim.flatten(), 1)}")
+print("-" * 30)
+
+
+# --- 3. RUN YOUR PIPELINE (The "Test") ---
+
+# A) Offset Pixels
+px1_off = offset_pixels(res, px1_sim)
+px2_off = offset_pixels(res, px2_sim)
+
+# B) Get Unit Vectors
+u1 = px2cam_unit(cam1, px1_off)
+u2 = px2cam_unit(cam2, px2_off)
+
+# C) Correlate (Should return index 0 since we only have 1 point)
+indices = correlate(cam1, cam2, u1, u2)
+print(f"Correlate matched index 0 with index: {indices[0]}")
+
+# D) Triangulate
+v1_vec = u1[:, 0]
+v2_vec = u2[:, 0] # Use indices here in real life
+calc_pt, error = locate(v1_vec, v2_vec, cam1, cam2)
+
+print(f"Calculated: {np.round(calc_pt, 4)}")
+print(f"Error: {np.linalg.norm(calc_pt - TRUE_PT_G):.5f} meters")
+
+
+# --- 4. VISUALIZATION ---
+plt.ioff()
+fig = plt.figure(figsize=(14, 7))
+
+# === Left: 3D Scene ===
+ax3d = fig.add_subplot(121, projection='3d')
+ax3d.set_title(f"3D Math Verification\nError: {error:.4f}m")
+ax3d.set_xlabel('X'); ax3d.set_ylabel('Y'); ax3d.set_zlabel('Z')
 
 # Plot Cameras
-datum(c_cam12g, r_o2cam1_g, ax, label_suffix="Cam 1")
-datum(c_cam22g, r_o2cam2_g, ax, label_suffix="Cam 2")
+ax3d.scatter(*cam1.r_o2cam_g, c='r', marker='^', s=100, label='Cam 1')
+ax3d.scatter(*cam2.r_o2cam_g, c='b', marker='^', s=100, label='Cam 2')
 
-# Plot Global Frame
-datum(np.eye(3), np.zeros((1,3)), ax, label_suffix="Global")
+# Plot Truth vs Calculated
+ax3d.scatter(*TRUE_PT_G, c='g', marker='x', s=100, label='Ground Truth')
+ax3d.scatter(*calc_pt, c='k', marker='o', s=50, label='Calculated')
 
-# plot a line from camera 1 to point
-ax.plot3D(np.array([r_o2cam1_g[0],pt_g[0]]),
-          np.array([r_o2cam1_g[1],pt_g[1]]),
-          np.array([r_o2cam1_g[2],pt_g[2]]))
+# Plot Rays
+ax3d.plot([cam1.r_o2cam_g[0], calc_pt[0]], 
+          [cam1.r_o2cam_g[1], calc_pt[1]], 
+          [cam1.r_o2cam_g[2], calc_pt[2]], 'r--', alpha=0.3)
 
-axis_equal(ax)
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-ax.set_title("3D Global View")
+ax3d.plot([cam2.r_o2cam_g[0], calc_pt[0]], 
+          [cam2.r_o2cam_g[1], calc_pt[1]], 
+          [cam2.r_o2cam_g[2], calc_pt[2]], 'b--', alpha=0.3)
 
-# === 2. 2D Plot (Right) ===
+ax3d.legend()
+axis_equal(ax3d) # Assuming you have this helper, otherwise standard matplotlib aspect
+
+# === Right: Cam 2 Sensor View ===
 ax2 = fig.add_subplot(122)
-
-# Ensure points are flat for plotting
-p1 = np.array(r_cam22cam1_px).flatten()
-p2 = np.array(r_cam22pt_px).flatten()
-
-# Plot line and points
-ax2.plot([p1[0], p2[0]], [p1[1], p2[1]], 'b-', label='Projected Line')
-ax2.plot(p1[0], p1[1], 'bo') 
-ax2.plot(p2[0], p2[1], 'ko', label='Target Point') 
-
-# Text Labels
-ax2.text(p1[0], p1[1], ' Cam1 (Proj)', fontsize=9)
-ax2.text(p2[0], p2[1], ' Point (Proj)', fontsize=9)
-
-# Generate Box (640x360 centered at origin)
-rect = patches.Rectangle((-320, -180), 640, 360, 
-                         linewidth=2, edgecolor='r', facecolor='none', label='Sensor Bounds')
-ax2.add_patch(rect)
-
-# --- 2D DATUM (Center Axes) ---
-# Red Arrow (u / X axis) - Points Right
-ax2.arrow(0, 0, 40, 0, head_width=10, head_length=10, fc='r', ec='r', zorder=10)
-ax2.text(50, 5, 'u', color='r', fontweight='bold')
-
-# Green Arrow (v / Y axis) - Points "Down" relative to image coords
-# Note: We still draw it to +40, but since we flip the axis limits below, +40 will appear BELOW 0.
-ax2.arrow(0, 0, 0, 40, head_width=10, head_length=10, fc='g', ec='g', zorder=10)
-ax2.text(5, 50, 'v', color='g', fontweight='bold')
-
-# 2D Plot Styling
-ax2.set_xlabel('u (pixels)')
-ax2.set_ylabel('v (pixels)')
-ax2.set_title("Camera 2 Sensor View")
-ax2.legend(loc='upper right')
+ax2.set_title("Cam 2 Sensor: Simulated vs Expected")
+ax2.set_xlim(-res[0]/2, res[0]/2)
+ax2.set_ylim(res[1]/2, -res[1]/2) # Flip Y
 ax2.grid(True)
 ax2.set_aspect('equal')
 
-# --- FLIP Y AXIS HERE ---
-# Top limit is now negative (visually top), Bottom limit is positive (visually bottom)
-ax2.set_xlim(-400, 400)
-ax2.set_ylim(250, -250) 
+# Draw Sensor Rect
+rect = patches.Rectangle((-res[0]/2, -res[1]/2), res[0], res[1], 
+                         linewidth=2, edgecolor='k', facecolor='none')
+ax2.add_patch(rect)
+
+# Draw what the pipeline "saw" (Blue)
+p_seen = px2_off.flatten()
+ax2.plot(p_seen[0], p_seen[1], 'bo', label='Pipeline Input (Offset)')
+
+# Draw the Epipolar Line from Cam 1
+# Project Cam1 Origin into Cam2
+vec_g = cam1.r_o2cam_g - cam2.r_o2cam_g
+vec_c2 = cam2.c_cam2g.T @ vec_g.flatten() # Transpose for Global->Cam
+epipole = cam2px(cam2, vec_c2.reshape(3,1)).flatten()
+
+ax2.plot([epipole[0], p_seen[0]], [epipole[1], p_seen[1]], 'g--', alpha=0.5, label='Epipolar Line')
+ax2.legend()
 
 plt.show()
