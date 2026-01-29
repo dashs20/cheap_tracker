@@ -75,6 +75,7 @@ while True:
 
     # --- MATH ---
     if len(px1) > 0 and len(px2) > 0:
+        # solve for the point locations using the lit pixels and camera objects
         pts_g = multi_track(px1,px2,cam1,cam2)
 
         # Print up to 2 points
